@@ -1,0 +1,92 @@
+// Esquema de base de datos — Comercial Camila (sistema de inventario y ventas)
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+  vendedora
+  inventarista
+}
+
+enum PaymentMethod {
+  efectivo
+  qr
+  transfer
+  card
+}
+
+model Product {
+  id            String   @id @default(uuid())
+  name          String
+  brand         String?
+  category      String?
+  price         Float // precio de venta (BOB)
+  purchasePrice Float? // precio de compra / costo (BOB)
+  stock         Int      @default(0)
+  image         String?
+  description   String?
+  barcode       String?  @unique
+  supplier      Supplier? @relation(fields: [supplierId], references: [id])
+  supplierId    String?
+  saleItems     SaleItem[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Supplier {
+  id          String    @id @default(uuid())
+  name        String
+  contactName String?
+  phone       String?
+  email       String?
+  notes       String?
+  products    Product[]
+  createdAt   DateTime  @default(now())
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  name      String
+  email     String?
+  phone     String?
+  createdAt DateTime @default(now())
+}
+
+model StaffUser {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(vendedora)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Sale {
+  id            String        @id @default(uuid())
+  date          DateTime      @default(now())
+  customerName  String        @default("Consumidor final")
+  customerEmail String?
+  customerPhone String?
+  subtotal      Float
+  total         Float
+  paymentMethod PaymentMethod @default(efectivo)
+  items         SaleItem[]
+}
+
+model SaleItem {
+  id        String   @id @default(uuid())
+  sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  saleId    String
+  product   Product? @relation(fields: [productId], references: [id])
+  productId String?
+  name      String
+  price     Float
+  quantity  Int
+}
