@@ -18,12 +18,14 @@ export class ProductsService {
   }
 
   create(dto: CreateProductDto) {
-    return this.prisma.product.create({ data: dto });
+    const { supplierId, ...data } = dto as any;
+    return this.prisma.product.create({ data: { ...data, supplierId: supplierId || null } });
   }
 
   async update(id: string, dto: UpdateProductDto) {
     await this.findOne(id);
-    return this.prisma.product.update({ where: { id }, data: dto });
+    const { supplierId, ...data } = dto as any;
+    return this.prisma.product.update({ where: { id }, data: { ...data, supplierId: supplierId || undefined } });
   }
 
   async remove(id: string) {
