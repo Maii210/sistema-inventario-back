@@ -18,6 +18,8 @@ model Product {
   stock         Int        @default(0)
   image         String?
   description   String?
+  use           String?
+  expiryDate    DateTime?
   barcode       String?    @unique
   supplierId    String?
   createdAt     DateTime   @default(now())
@@ -59,7 +61,7 @@ model StaffUser {
   name      String
   email     String   @unique
   password  String
-  role      Role     @default(vendedora)
+  role      Role     @default(vendedor)
   active    Boolean  @default(true)
   phone     String?
   lastName  String?
@@ -92,22 +94,50 @@ model Sale {
 }
 
 model SaleItem {
-  id        String   @id @default(uuid())
-  saleId    String
-  productId String?
-  name      String
-  price     Float
-  quantity  Int
-  discount  Float    @default(0)
-  product   Product? @relation(fields: [productId], references: [id])
-  sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  id           String   @id @default(uuid())
+  saleId       String
+  productId    String?
+  name         String
+  price        Float
+  quantity     Int
+  discount     Float    @default(0)
+  isExternal   Boolean  @default(false)
+  externalCost Float?
+  product      Product? @relation(fields: [productId], references: [id])
+  sale         Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
 
   @@map("sale_items")
 }
 
+// Configuración clave/valor (ej. imagen del QR del banco: key = "bank_qr").
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}
+
+// Sesión de caja (arqueo): apertura con monto inicial y cierre con conteo.
+model CashSession {
+  id            String    @id @default(uuid())
+  openedAt      DateTime  @default(now())
+  openingAmount Float
+  openedById    String?
+  openedByName  String?
+  closedAt      DateTime?
+  countedAmount Float?
+  closedById    String?
+  closedByName  String?
+  status        String    @default("open") // open | closed
+  notes         String?
+
+  @@map("cash_sessions")
+}
+
 enum Role {
   admin
-  vendedora
+  vendedor
   inventarista
 }
 

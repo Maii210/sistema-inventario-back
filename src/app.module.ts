@@ -7,6 +7,9 @@ import { ReportsModule } from './reports/reports.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { CustomersModule } from './customers/customers.module';
+import { SuppliersModule } from './suppliers/suppliers.module';
+import { SettingsModule } from './settings/settings.module';
+import { CashModule } from './cash/cash.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -18,7 +21,10 @@ import { AppController } from './app.controller';
     SalesModule,
     ReportsModule,
     AuthModule,
-    CustomersModule
+    CustomersModule,
+    SuppliersModule,
+    SettingsModule,
+    CashModule
   ],
   controllers: [AppController]
 })

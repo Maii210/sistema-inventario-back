@@ -40,18 +40,23 @@ export class SalesService {
         await tx.saleItem.create({
           data: {
             saleId: newSale.id,
-            productId: item.productId,
+            productId: item.productId || null,
             name: item.name,
             price: item.price,
             quantity: item.quantity,
-            discount: item.discount || 0
+            discount: item.discount || 0,
+            isExternal: item.isExternal || false,
+            externalCost: item.externalCost ?? null
           }
         });
-        
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { stock: { decrement: item.quantity } }
-        });
+
+        // Solo descuenta stock de productos propios (no de prestados/externos).
+        if (item.productId && !item.isExternal) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stock: { decrement: item.quantity } }
+          });
+        }
       }
       
       return newSale;

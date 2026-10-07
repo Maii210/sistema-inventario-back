@@ -1,4 +1,4 @@
-import { IsInt, IsNumber, IsOptional, IsString, Min, MinLength } from 'class-validator';
+import { IsDateString, IsInt, IsNumber, IsOptional, IsString, Min, MinLength } from 'class-validator';
 
 export class CreateProductDto {
   @IsString()
@@ -27,12 +27,25 @@ export class CreateProductDto {
   stock!: number;
 
   @IsOptional()
+  @IsInt()
+  @Min(0)
+  minStock?: number;
+
+  @IsOptional()
   @IsString()
   image?: string;
 
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsString()
+  use?: string;
+
+  @IsOptional()
+  @IsDateString()
+  expiryDate?: string;
 
   @IsOptional()
   @IsString()
