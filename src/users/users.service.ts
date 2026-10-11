@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -17,13 +18,27 @@ export class UsersService {
     return user;
   }
 
-  create(dto: CreateUserDto) {
-    return this.prisma.staffUser.create({ data: dto });
+  async create(dto: CreateUserDto) {
+    try {
+      return await this.prisma.staffUser.create({ data: dto });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        throw new ConflictException('Ya existe un usuario con ese correo');
+      }
+      throw e;
+    }
   }
 
   async update(id: string, dto: UpdateUserDto) {
     await this.findOne(id);
-    return this.prisma.staffUser.update({ where: { id }, data: dto });
+    try {
+      return await this.prisma.staffUser.update({ where: { id }, data: dto });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        throw new ConflictException('Ya existe un usuario con ese correo');
+      }
+      throw e;
+    }
   }
 
   async remove(id: string) {

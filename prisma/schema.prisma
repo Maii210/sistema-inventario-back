@@ -36,6 +36,7 @@ model Supplier {
   contactName String?
   phone       String?
   email       String?
+  address     String?
   notes       String?
   createdAt   DateTime  @default(now())
   products    Product[]
@@ -50,6 +51,8 @@ model Customer {
   phone      String?
   documentId String?  @unique
   lastName   String?
+  address    String?
+  notes      String?
   createdAt  DateTime @default(now())
   sales      Sale[]
 
@@ -57,16 +60,17 @@ model Customer {
 }
 
 model StaffUser {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      Role     @default(vendedor)
-  active    Boolean  @default(true)
-  phone     String?
-  lastName  String?
-  createdAt DateTime @default(now())
-  sales     Sale[]
+  id         String   @id @default(uuid())
+  name       String
+  email      String?  @unique
+  password   String
+  role       Role     @default(vendedor)
+  active     Boolean  @default(true)
+  phone      String?
+  lastName   String?
+  documentId String?
+  createdAt  DateTime @default(now())
+  sales      Sale[]
 
   @@map("staff_users")
 }
@@ -139,6 +143,7 @@ enum Role {
   admin
   vendedor
   inventarista
+  superadmin
 }
 
 enum PaymentMethod {

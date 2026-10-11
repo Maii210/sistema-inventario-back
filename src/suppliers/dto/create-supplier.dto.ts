@@ -19,5 +19,9 @@ export class CreateSupplierDto {
 
   @IsOptional()
   @IsString()
+  address?: string;
+
+  @IsOptional()
+  @IsString()
   notes?: string;
 }

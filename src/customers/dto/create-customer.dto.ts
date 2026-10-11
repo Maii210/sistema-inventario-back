@@ -20,4 +20,12 @@ export class CreateCustomerDto {
   @IsOptional()
   @IsString()
   documentId?: string;
+
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }

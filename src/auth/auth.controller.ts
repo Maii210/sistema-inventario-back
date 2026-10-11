@@ -1,12 +1,14 @@
-import { Controller, Post, Body, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Post, Body, ValidationPipe, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { IsString, IsEmail } from 'class-validator';
+import { IsString, MinLength } from 'class-validator';
 
 class LoginBody {
-  @IsEmail()
+  @IsString()
+  @MinLength(1)
   email!: string;
 
   @IsString()
+  @MinLength(1)
   password!: string;
 }
 
@@ -16,29 +18,29 @@ export class AuthController {
 
   @Post('login')
   async login(@Body(ValidationPipe) body: LoginBody) {
-    const user = await this.prisma.staffUser.findUnique({
-      where: { email: body.email }
+    const id = body.email.trim();
+    const user = await this.prisma.staffUser.findFirst({
+      where: { OR: [{ email: id }, { phone: id }] },
     });
-    
-    if (!user) {
-      return { success: false, message: 'Credenciales inválidas' };
+
+    if (!user || user.password !== body.password) {
+      throw new UnauthorizedException('Credenciales inválidas');
     }
-    
-    const isValid = user.password === body.password;
-    
-    if (!isValid) {
-      return { success: false, message: 'Credenciales inválidas' };
+    if (!user.active) {
+      throw new UnauthorizedException('Usuario desactivado');
     }
-    
+
     return {
       success: true,
       user: {
         id: user.id,
         name: user.name,
+        lastName: user.lastName,
         email: user.email,
+        phone: user.phone,
         role: user.role,
-        active: user.active
-      }
+        active: user.active,
+      },
     };
   }
 }

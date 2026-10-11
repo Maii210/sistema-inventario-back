@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
@@ -17,13 +18,27 @@ export class CustomersService {
     return customer;
   }
 
-  create(dto: CreateCustomerDto) {
-    return this.prisma.customer.create({ data: dto });
+  async create(dto: CreateCustomerDto) {
+    try {
+      return await this.prisma.customer.create({ data: dto });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        throw new ConflictException('Ya existe un cliente con ese carnet');
+      }
+      throw e;
+    }
   }
 
   async update(id: string, dto: UpdateCustomerDto) {
     await this.findOne(id);
-    return this.prisma.customer.update({ where: { id }, data: dto });
+    try {
+      return await this.prisma.customer.update({ where: { id }, data: dto });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        throw new ConflictException('Ya existe un cliente con ese carnet');
+      }
+      throw e;
+    }
   }
 
   async remove(id: string) {
