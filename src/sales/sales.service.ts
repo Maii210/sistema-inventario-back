@@ -28,26 +28,35 @@ export class SalesService {
     const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const total = subtotal - (rest.discount || 0);
     const sale = await this.prisma.$transaction(async (tx) => {
-      const newSale = await tx.sale.create({ 
-        data: { 
-          ...rest, 
-          subtotal, 
-          total 
-        } 
+      const newSale = await tx.sale.create({
+        data: {
+          // Se usan relaciones (connect) en lugar de los FK escalares: asignar
+          // `customerId: null`/`productId: null` provocaba "Unknown argument".
+          customerName: rest.customerName || 'Consumidor final',
+          customerEmail: rest.customerEmail ?? null,
+          customerPhone: rest.customerPhone ?? null,
+          discount: rest.discount ?? 0,
+          paymentMethod: rest.paymentMethod ?? 'efectivo',
+          paymentReference: rest.paymentReference ?? null,
+          subtotal,
+          total,
+          ...(rest.customerId ? { customer: { connect: { id: rest.customerId } } } : {}),
+          ...(rest.userId ? { user: { connect: { id: rest.userId } } } : {}),
+        },
       });
-      
+
       for (const item of items) {
         await tx.saleItem.create({
           data: {
-            saleId: newSale.id,
-            productId: item.productId || null,
+            sale: { connect: { id: newSale.id } },
             name: item.name,
             price: item.price,
             quantity: item.quantity,
             discount: item.discount || 0,
             isExternal: item.isExternal || false,
-            externalCost: item.externalCost ?? null
-          }
+            externalCost: item.externalCost ?? null,
+            ...(item.productId ? { product: { connect: { id: item.productId } } } : {}),
+          },
         });
 
         // Solo descuenta stock de productos propios (no de prestados/externos).
