@@ -11,14 +11,26 @@ export class CashService {
   private async sessionTotals(openedAt: Date, closedAt?: Date | null) {
     const sales = await this.prisma.sale.findMany({
       where: { createdAt: { gte: openedAt, ...(closedAt ? { lte: closedAt } : {}) } },
+      include: { user: true },
     });
     const byMethod: Record<string, number> = {};
+    const discountsBySellerMap: Record<string, { sellerId: string | null; sellerName: string; count: number; total: number; discount: number }> = {};
     let total = 0;
+    let discount = 0;
     for (const s of sales) {
       byMethod[s.paymentMethod] = (byMethod[s.paymentMethod] || 0) + s.total;
       total += s.total;
+      discount += s.discount;
+      const key = s.userId || 'sin-asignar';
+      if (!discountsBySellerMap[key]) {
+        const name = s.user ? `${s.user.name}${s.user.lastName ? ` ${s.user.lastName}` : ''}` : 'Sin asignar';
+        discountsBySellerMap[key] = { sellerId: s.userId, sellerName: name, count: 0, total: 0, discount: 0 };
+      }
+      discountsBySellerMap[key].count += 1;
+      discountsBySellerMap[key].total += s.total;
+      discountsBySellerMap[key].discount += s.discount;
     }
-    return { count: sales.length, total, byMethod };
+    return { count: sales.length, total, discount, byMethod, discountsBySeller: Object.values(discountsBySellerMap) };
   }
 
   private withTotals = async (session: any) => {
