@@ -6,6 +6,12 @@ import { CreateBatchDto } from './dto/create-batch.dto';
 
 const withBatches = { batches: { orderBy: { expiryDate: 'asc' as const } } };
 
+// Genera un código interno de 13 dígitos (prefijo 200 = uso interno).
+function generateBarcode(): string {
+  const rand = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+  return '200' + Date.now().toString().slice(-7) + rand;
+}
+
 @Injectable()
 export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -22,6 +28,8 @@ export class ProductsService {
 
   create(dto: CreateProductDto) {
     const { supplierId, ...data } = dto as any;
+    // Si el producto no trae código de barras, se le genera uno automáticamente.
+    if (!data.barcode) data.barcode = generateBarcode();
     return this.prisma.$transaction(async (tx) => {
       const product = await tx.product.create({ data: { ...data, supplierId: supplierId || null } });
       const qty = Number(data.stock) || 0;
