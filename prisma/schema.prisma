@@ -25,8 +25,21 @@ model Product {
   updatedAt     DateTime   @updatedAt
   supplier      Supplier?  @relation(fields: [supplierId], references: [id])
   saleItems     SaleItem[]
+  batches       ProductBatch[]
 
   @@map("products")
+}
+
+// Lote de inventario: cada ingreso de stock con su propia fecha de caducidad.
+model ProductBatch {
+  id         String    @id @default(uuid())
+  productId  String
+  quantity   Int
+  expiryDate DateTime?
+  createdAt  DateTime  @default(now())
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_batches")
 }
 
 model Supplier {
@@ -131,6 +144,10 @@ model CashSession {
   openedByName  String?
   closedAt      DateTime?
   countedAmount Float?
+  qrCounted     Float?
+  expectedCashManual Float?
+  expectedQrManual   Float?
+  leftInCash    Float?
   closedById    String?
   closedByName  String?
   status        String    @default("open") // open | closed

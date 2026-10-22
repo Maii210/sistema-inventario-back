@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/commo
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { CreateBatchDto } from './dto/create-batch.dto';
 
 @Controller('products')
 export class ProductsController {
@@ -30,5 +31,16 @@ export class ProductsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.products.remove(id);
+  }
+
+  // ─── Lotes ───────────────────────────────────────────────
+  @Post(':id/batches')
+  addBatch(@Param('id') id: string, @Body() dto: CreateBatchDto) {
+    return this.products.addBatch(id, dto);
+  }
+
+  @Delete(':id/batches/:batchId')
+  removeBatch(@Param('id') id: string, @Param('batchId') batchId: string) {
+    return this.products.removeBatch(id, batchId);
   }
 }

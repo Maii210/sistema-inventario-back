@@ -49,8 +49,9 @@ export class CashService {
     return this.withTotals(session);
   }
 
-  history() {
-    return this.prisma.cashSession.findMany({ orderBy: { openedAt: 'desc' } });
+  async history() {
+    const sessions = await this.prisma.cashSession.findMany({ orderBy: { openedAt: 'desc' } });
+    return Promise.all(sessions.map((s) => this.withTotals(s)));
   }
 
   async open(dto: OpenCashDto) {
@@ -75,6 +76,10 @@ export class CashService {
         status: 'closed',
         closedAt: new Date(),
         countedAmount: dto.countedAmount,
+        qrCounted: dto.qrCounted ?? null,
+        expectedCashManual: dto.expectedCashManual ?? null,
+        expectedQrManual: dto.expectedQrManual ?? null,
+        leftInCash: dto.leftInCash ?? null,
         closedById: dto.closedById || null,
         closedByName: dto.closedByName || null,
         notes: dto.notes || null,

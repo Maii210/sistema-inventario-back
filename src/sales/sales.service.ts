@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
 import { UpdateSaleDto } from './dto/update-sale.dto';
@@ -24,6 +24,12 @@ export class SalesService {
   }
 
   async create(dto: CreateSaleDto) {
+    // No se permiten ventas si no hay una caja abierta (arqueo cerrado).
+    const openSession = await this.prisma.cashSession.findFirst({ where: { status: 'open' } });
+    if (!openSession) {
+      throw new BadRequestException('La caja está cerrada. Abre la caja antes de registrar ventas.');
+    }
+
     const { items, ...rest } = dto;
     const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const total = subtotal - (rest.discount || 0);
@@ -61,10 +67,34 @@ export class SalesService {
 
         // Solo descuenta stock de productos propios (no de prestados/externos).
         if (item.productId && !item.isExternal) {
-          await tx.product.update({
-            where: { id: item.productId },
-            data: { stock: { decrement: item.quantity } }
+          const productId = item.productId;
+          // FEFO: descuenta primero de los lotes que vencen antes.
+          const batches = await tx.productBatch.findMany({
+            where: { productId },
+            orderBy: [{ expiryDate: 'asc' }, { createdAt: 'asc' }],
           });
+          if (batches.length === 0) {
+            // Producto sin lotes (legado): descuento directo.
+            await tx.product.update({ where: { id: productId }, data: { stock: { decrement: item.quantity } } });
+          } else {
+            let remaining = item.quantity;
+            for (const b of batches) {
+              if (remaining <= 0) break;
+              const take = Math.min(b.quantity, remaining);
+              await tx.productBatch.update({ where: { id: b.id }, data: { quantity: { decrement: take } } });
+              remaining -= take;
+            }
+            await tx.productBatch.deleteMany({ where: { productId, quantity: { lte: 0 } } });
+            const agg = await tx.productBatch.aggregate({ where: { productId }, _sum: { quantity: true } });
+            const earliest = await tx.productBatch.findFirst({
+              where: { productId, expiryDate: { not: null } },
+              orderBy: { expiryDate: 'asc' },
+            });
+            await tx.product.update({
+              where: { id: productId },
+              data: { stock: agg._sum.quantity ?? 0, expiryDate: earliest?.expiryDate ?? null },
+            });
+          }
         }
       }
       
