@@ -2,3 +2,10 @@ node_modules
 dist
 .env
 *.log
+
+# Herramientas de desarrollo (no versionar)
+.bolt
+.claude
+.superpowers
+docs/superpowers
+CLAUDE.md
