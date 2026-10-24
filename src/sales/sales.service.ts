@@ -34,6 +34,15 @@ export class SalesService {
     const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const total = subtotal - (rest.discount || 0);
     const sale = await this.prisma.$transaction(async (tx) => {
+      const productIds = [...new Set(items.flatMap((item) =>
+        item.productId && !item.isExternal ? [item.productId] : [],
+      ))];
+      const products = await tx.product.findMany({
+        where: { id: { in: productIds } },
+        select: { id: true, purchasePrice: true },
+      });
+      const productCosts = new Map(products.map((product) => [product.id, product.purchasePrice]));
+
       const newSale = await tx.sale.create({
         data: {
           // Se usan relaciones (connect) en lugar de los FK escalares: asignar
@@ -61,6 +70,11 @@ export class SalesService {
             discount: item.discount || 0,
             isExternal: item.isExternal || false,
             externalCost: item.externalCost ?? null,
+            unitCost: item.isExternal
+              ? item.externalCost ?? null
+              : item.productId
+                ? productCosts.get(item.productId) ?? null
+                : null,
             ...(item.productId ? { product: { connect: { id: item.productId } } } : {}),
           },
         });

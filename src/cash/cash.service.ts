@@ -11,16 +11,31 @@ export class CashService {
   private async sessionTotals(openedAt: Date, closedAt?: Date | null) {
     const sales = await this.prisma.sale.findMany({
       where: { createdAt: { gte: openedAt, ...(closedAt ? { lte: closedAt } : {}) } },
-      include: { user: true },
+      include: {
+        user: true,
+        items: {
+          include: { product: { select: { purchasePrice: true } } },
+        },
+      },
     });
     const byMethod: Record<string, number> = {};
     const discountsBySellerMap: Record<string, { sellerId: string | null; sellerName: string; count: number; total: number; discount: number }> = {};
     let total = 0;
     let discount = 0;
+    let cost = 0;
+    let costsComplete = true;
     for (const s of sales) {
       byMethod[s.paymentMethod] = (byMethod[s.paymentMethod] || 0) + s.total;
       total += s.total;
       discount += s.discount;
+      for (const item of s.items) {
+        const unitCost = item.unitCost ?? (item.isExternal ? item.externalCost : item.product?.purchasePrice);
+        if (unitCost == null) {
+          costsComplete = false;
+        } else {
+          cost += unitCost * item.quantity;
+        }
+      }
       const key = s.userId || 'sin-asignar';
       if (!discountsBySellerMap[key]) {
         const name = s.user ? `${s.user.name}${s.user.lastName ? ` ${s.user.lastName}` : ''}` : 'Sin asignar';
@@ -30,7 +45,17 @@ export class CashService {
       discountsBySellerMap[key].total += s.total;
       discountsBySellerMap[key].discount += s.discount;
     }
-    return { count: sales.length, total, discount, byMethod, discountsBySeller: Object.values(discountsBySellerMap) };
+    const grossProfit = costsComplete ? total - cost : null;
+    const marginPercent = grossProfit == null || total === 0 ? null : (grossProfit / total) * 100;
+    return {
+      count: sales.length,
+      total,
+      discount,
+      byMethod,
+      discountsBySeller: Object.values(discountsBySellerMap),
+      grossProfit,
+      marginPercent,
+    };
   }
 
   private withTotals = async (session: any) => {

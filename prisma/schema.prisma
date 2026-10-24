@@ -120,6 +120,7 @@ model SaleItem {
   discount     Float    @default(0)
   isExternal   Boolean  @default(false)
   externalCost Float?
+  unitCost     Float?
   product      Product? @relation(fields: [productId], references: [id])
   sale         Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
 
