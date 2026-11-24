@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Category } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -10,6 +11,28 @@ const withBatches = { batches: { orderBy: { expiryDate: 'asc' as const } } };
 function generateBarcode(): string {
   const rand = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
   return '200' + Date.now().toString().slice(-7) + rand;
+}
+
+function normalizeCategory(value?: string): Category {
+  const normalized = (value || 'OTRO')
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/[ -]+/g, '_');
+  const aliases: Record<string, Category> = {
+    PERFUMERIA: Category.PERFUMERIA,
+    CUIDADO_PERSONAL: Category.CUIDADO_PERSONAL,
+    COSMETICOS: Category.COSMETICOS,
+    OTRO: Category.OTRO,
+  };
+  const category = aliases[normalized];
+  if (!category) {
+    throw new BadRequestException(
+      'Categoría no válida. Usa Perfumería, Cuidado personal, Cosméticos u Otro.',
+    );
+  }
+  return category;
 }
 
 @Injectable()
@@ -28,6 +51,7 @@ export class ProductsService {
 
   create(dto: CreateProductDto) {
     const { supplierId, ...data } = dto as any;
+    data.category = normalizeCategory(data.category);
     // Si el producto no trae código de barras, se le genera uno automáticamente.
     if (!data.barcode) data.barcode = generateBarcode();
     return this.prisma.$transaction(async (tx) => {
@@ -46,6 +70,7 @@ export class ProductsService {
   async update(id: string, dto: UpdateProductDto) {
     await this.findOne(id);
     const { supplierId, ...data } = dto as any;
+    if (data.category !== undefined) data.category = normalizeCategory(data.category);
     // stock y expiryDate son derivados de los lotes: no se editan desde el producto.
     delete data.stock;
     delete data.expiryDate;
@@ -63,7 +88,7 @@ export class ProductsService {
     await this.findOne(productId);
     return this.prisma.$transaction(async (tx) => {
       await tx.productBatch.create({
-        data: { productId, quantity: dto.quantity, expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : null },
+        data: { productId, quantity: dto.quantity, barcode: dto.barcode || null, expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : null },
       });
       await this.syncProduct(tx, productId);
       return tx.product.findUnique({ where: { id: productId }, include: withBatches });
